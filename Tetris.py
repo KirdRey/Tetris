@@ -3,6 +3,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import sys
 import random
+import sqlite3
 
 
 class game(QMainWindow):
@@ -19,22 +20,26 @@ class game(QMainWindow):
         self.perevorotfig = 0
         self.deletedlines = 0
         self.score = 0
+        self.nextfig = random.choice(self.fig)
         self.buttoncolours = ['#FF00FF', '#800080', '#FF0000', '#800000',
                               '#008000', '#FFFF00', '#00FF00', '#808000', '#00FFFF', '#0000FF']
+        self.startigra = False
+        self.pausegame = False
 
 
     def initUI(self):
-        self.setGeometry(900, 100, 800, 800)
+        self.setGeometry(900, 100, 700, 600)
         self.setWindowTitle('GAME')
 
         self.start = QPushButton(f'Начать игру', self)
         self.start.resize(100, 40)
         self.start.move(50, 10)
-        self.start.clicked.connect(self.turn)
+        self.start.clicked.connect(self.startgame)
 
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.turn)
-        self.timer.start(self.speed)
+        self.start = QPushButton(f'Пауза', self)
+        self.start.resize(100, 40)
+        self.start.move(50, 60)
+        self.start.clicked.connect(self.pause)
 
         self.label = QLabel(self)
         self.label.setText("Очки")
@@ -43,15 +48,57 @@ class game(QMainWindow):
         self.scoreLCD = QLCDNumber(self)
         self.scoreLCD.move(60, 140)
 
+        self.label1 = QLabel(self)
+        self.label1.setText("Уровень")
+        self.label1.move(80, 180)
+
+        self.scoreLCD2 = QLCDNumber(self)
+        self.scoreLCD2.move(60, 210)
+
+        self.db = sqlite3.connect("Tetris.db")
+
+    def save_results(self, name, score):
+        cur = self.db.cursor()
+        print(2)
+        que = f'INSERT INTO Tetris(name, score) VALUES({name}, {score})'
+        cur.execute(que, (self.spinBox.text(),))
+        print(3)
+        self.db.commit()
+        print(4)
+        self.db.close()
+
+    def startgame(self):
+        self.createpole()
+        self.startigra = True
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.turn)
+        self.timer.start(self.speed)
+
+    def pause(self):
+        if not self.pausegame:
+            self.timer.stop()
+            self.pausegame = True
+        else:
+            self.timer.start(self.speed)
+            self.pausegame = False
+
     def createpole(self):
         for i in range(10):
             for j in range(20):
                 exec(f'self.btn{str(i) + str(0) + str(j)} = QPushButton(self)')
-                exec(f'self.btn{str(i) + str(0) + str(j)}.resize(40, 40)')
-                exec(f'self.btn{str(i) + str(0) + str(j)}.move({i * 40 + 200}, {j * 40})')
+                exec(f'self.btn{str(i) + str(0) + str(j)}.resize(30, 30)')
+                exec(f'self.btn{str(i) + str(0) + str(j)}.move({i * 30 + 200}, {j * 30})')
                 exec(f'self.btn{str(i) + str(0) + str(j)}.setEnabled(False)')
                 exec(f'self.btn{str(i) + str(0) + str(j)}.setStyleSheet("background-color: #FFFFFF")')
                 exec(f'self.btn{str(i) + str(0) + str(j)}.show()')
+        for i in range(4):
+            for j in range(4):
+                exec(f'self.btn{str(i) + str(1) + str(j)} = QPushButton(self)')
+                exec(f'self.btn{str(i) + str(1) + str(j)}.resize(30, 30)')
+                exec(f'self.btn{str(i) + str(1) + str(j)}.move({i * 30 + 540}, {j * 30 + 80})')
+                exec(f'self.btn{str(i) + str(1) + str(j)}.setEnabled(False)')
+                exec(f'self.btn{str(i) + str(1) + str(j)}.setStyleSheet("background-color: #FFFFFF")')
+                exec(f'self.btn{str(i) + str(1) + str(j)}.show()')
         for i in range(20):
             pole1 = []
             for j in range(10):
@@ -59,21 +106,27 @@ class game(QMainWindow):
             self.pole.append(pole1)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_D:
-            self.dash('>')
-        elif event.key() == Qt.Key_A:
-            self.dash('<')
-        elif event.key() == Qt.Key_S:
-            self.score += 1
-            self.scoreLCD.display(self.score)
-            self.dash('v')
-        elif event.key() == Qt.Key_W:
-            self.dash('/')
+        if self.startigra:
+            if event.key() == Qt.Key_D:
+                self.dash('>')
+            elif event.key() == Qt.Key_A:
+                self.dash('<')
+            elif event.key() == Qt.Key_S:
+                self.score += 1
+                self.scoreLCD.display(self.score)
+                self.dash('v')
+            elif event.key() == Qt.Key_W:
+                self.dash('/')
 
     def createfigure(self):
-        if self.pole[0][4] == 'X':
+        if self.pole[0].count('X') > 0:
             print('lose')
             self.timer.stop()
+
+            i, okBtnPressed = QInputDialog.getText(self, 'Game over', "Введите имя")
+            if okBtnPressed:
+                print(1)
+                self.save_results(i, self.score)
         else:
             if self.curfig == 'o':
                 self.figpos = [[4, 0], [5, 0], [4, 1], [5, 1]]
@@ -382,6 +435,7 @@ class game(QMainWindow):
         self.scoreLCD.display(self.score)
 
     def level(self):
+        self.scoreLCD2.display(self.deletedlines // 3)
         self.speed = 600 - self.deletedlines // 3 * 20
         self.timer.start(self.speed)
 
@@ -449,7 +503,8 @@ class game(QMainWindow):
     def turn(self):
         if self.figpos == []:
             self.perevorotfig = 0
-            self.curfig = random.choice(self.fig)
+            self.curfig = self.nextfig
+            self.nextfig = random.choice(self.fig)
             self.createfigure()
             self.repaiting()
         else:
