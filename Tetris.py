@@ -12,6 +12,14 @@ class game(QMainWindow):
         self.speed = 600
         self.initUI()
         self.pole = []
+        self.pole1 = []
+        self.figures = [[[4, 0], [5, 0], [4, 1], [5, 1]],
+                   [[4, 0], [4, 1], [4, 2], [4, 3]],
+                   [[4, 0], [3, 0], [3, 1], [2, 1]],
+                   [[4, 0], [5, 0], [5, 1], [6, 1]],
+                   [[4, 0], [4, 1], [3, 1], [2, 1]],
+                   [[4, 0], [4, 1], [5, 1], [6, 1]],
+                   [[4, 0], [3, 1], [5, 1], [4, 1]]]
         self.createpole()
         self.fig = ['o', 'i', 's', 'z', 'l', 'j', 't']
         self.curfig = ''
@@ -22,13 +30,13 @@ class game(QMainWindow):
         self.score = 0
         self.nextfig = random.choice(self.fig)
         self.buttoncolours = ['#FF00FF', '#800080', '#FF0000', '#800000',
-                              '#008000', '#FFFF00', '#00FF00', '#808000', '#00FFFF', '#0000FF']
+                              '#008000', '#808000', '#0000FF']
         self.startigra = False
         self.pausegame = False
 
 
     def initUI(self):
-        self.setGeometry(900, 100, 700, 600)
+        self.setGeometry(900, 100, 800, 600)
         self.setWindowTitle('GAME')
 
         self.start = QPushButton(f'Начать игру', self)
@@ -38,34 +46,56 @@ class game(QMainWindow):
 
         self.start = QPushButton(f'Пауза', self)
         self.start.resize(100, 40)
-        self.start.move(50, 60)
+        self.start.move(50, 90)
         self.start.clicked.connect(self.pause)
 
+
+        self.rules = QLabel(self)
+        self.rules.setText("Правила:\n+1 уровень за 3 убранные линии\n"
+                           "ОДНА линия - 100 очков\n"
+                           "ДВЕ линии - 300 очков\n"
+                           "ТРИ линии - 600 очков\n"
+                           "ЧЕТЫРЕ линии - 1000 очков\n"
+                           "Проигрыш - фигура на первом ряду\n"
+                           "При проигрыше заполните имя\n\n"
+                           "Управление:\n"
+                           "А - влево, D - вправо\n"
+                           "S - вниз,  W - переворот\n\n"
+                           "Удачи!")
+        self.rules.resize(200, 300)
+        self.rules.move(10, 270)
+
         self.label = QLabel(self)
-        self.label.setText("Очки")
-        self.label.move(80, 110)
+        self.label.setText("Очки:")
+        self.label.move(80, 160)
 
         self.scoreLCD = QLCDNumber(self)
-        self.scoreLCD.move(60, 140)
+        self.scoreLCD.move(60, 190)
 
         self.label1 = QLabel(self)
-        self.label1.setText("Уровень")
-        self.label1.move(80, 180)
+        self.label1.setText("Уровень:")
+        self.label1.move(80, 240)
 
         self.scoreLCD2 = QLCDNumber(self)
-        self.scoreLCD2.move(60, 210)
+        self.scoreLCD2.move(60, 270)
 
-        self.db = sqlite3.connect("Tetris.db")
+        self.label2 = QLabel(self)
+        self.label2.setText("Следующая фигура:")
+        self.label2.resize(130, 30)
+        self.label2.move(600, 50)
 
-    def save_results(self, name, score):
-        cur = self.db.cursor()
-        print(2)
-        que = f'INSERT INTO Tetris(name, score) VALUES({name}, {score})'
-        cur.execute(que, (self.spinBox.text(),))
-        print(3)
-        self.db.commit()
-        print(4)
-        self.db.close()
+        self.scoreboard = QTableWidget(self)
+        self.scoreboard.move(540, 240)
+        self.scoreboard.resize(224, 327)
+        self.scoreboard.setRowCount(10)
+        self.scoreboard.setColumnCount(2)
+
+    def save_results(self, name):
+        con = sqlite3.connect('Tetris.db')
+        cur = con.cursor()
+        result = cur.execute(f"""insert into Tetris(name, score) values({name}, {self.score})""")
+        con.commit()
+        con.close()
 
     def startgame(self):
         self.createpole()
@@ -91,19 +121,24 @@ class game(QMainWindow):
                 exec(f'self.btn{str(i) + str(0) + str(j)}.setEnabled(False)')
                 exec(f'self.btn{str(i) + str(0) + str(j)}.setStyleSheet("background-color: #FFFFFF")')
                 exec(f'self.btn{str(i) + str(0) + str(j)}.show()')
-        for i in range(4):
+        for i in range(5):
             for j in range(4):
-                exec(f'self.btn{str(i) + str(1) + str(j)} = QPushButton(self)')
-                exec(f'self.btn{str(i) + str(1) + str(j)}.resize(30, 30)')
-                exec(f'self.btn{str(i) + str(1) + str(j)}.move({i * 30 + 540}, {j * 30 + 80})')
-                exec(f'self.btn{str(i) + str(1) + str(j)}.setEnabled(False)')
-                exec(f'self.btn{str(i) + str(1) + str(j)}.setStyleSheet("background-color: #FFFFFF")')
-                exec(f'self.btn{str(i) + str(1) + str(j)}.show()')
+                exec(f'self.btn{str(i) + str(111) + str(j)} = QPushButton(self)')
+                exec(f'self.btn{str(i) + str(111) + str(j)}.resize(30, 30)')
+                exec(f'self.btn{str(i) + str(111) + str(j)}.move({i * 30 + 580}, {j * 30 + 80})')
+                exec(f'self.btn{str(i) + str(111) + str(j)}.setEnabled(False)')
+                exec(f'self.btn{str(i) + str(111) + str(j)}.setStyleSheet("background-color: #FFFFFF")')
+                exec(f'self.btn{str(i) + str(111) + str(j)}.show()')
         for i in range(20):
             pole1 = []
             for j in range(10):
                 pole1.append('O')
             self.pole.append(pole1)
+        for i in range(3):
+            pole1 = []
+            for i in range(4):
+                pole1.append('O')
+            self.pole1.append(pole1)
 
     def keyPressEvent(self, event):
         if self.startigra:
@@ -112,44 +147,42 @@ class game(QMainWindow):
             elif event.key() == Qt.Key_A:
                 self.dash('<')
             elif event.key() == Qt.Key_S:
-                self.score += 1
-                self.scoreLCD.display(self.score)
                 self.dash('v')
             elif event.key() == Qt.Key_W:
                 self.dash('/')
 
-    def createfigure(self):
-        if self.pole[0].count('X') > 0:
-            print('lose')
-            self.timer.stop()
+    def createfigure(self, figure):
+        if figure == 'o':
+            self.figpos = [[4, 0], [5, 0], [4, 1], [5, 1]]
+            self.minx, self.miny, self.maxx, self.maxy = 4, 0, 5, 1
+        elif figure == 'i':
+            self.figpos = [[4, 0], [4, 1], [4, 2], [4, 3]]
+            self.minx, self.miny, self.maxx, self.maxy = 4, 0, 4, 3
+        elif figure == 's':
+            self.figpos = [[4, 0], [3, 0], [3, 1], [2, 1]]
+            self.minx, self.miny, self.maxx, self.maxy = 2, 0, 4, 1
+        elif figure == 'z':
+            self.figpos = [[4, 0], [5, 0], [5, 1], [6, 1]]
+            self.minx, self.miny, self.maxx, self.maxy = 4, 0, 6, 1
+        elif figure == 'l':
+            self.figpos = [[4, 0], [4, 1], [3, 1], [2, 1]]
+            self.minx, self.miny, self.maxx, self.maxy = 2, 0, 4, 1
+        elif figure == 'j':
+            self.figpos = [[4, 0], [4, 1], [5, 1], [6, 1]]
+            self.minx, self.miny, self.maxx, self.maxy = 4, 0, 6, 1
+        elif figure == 't':
+            self.figpos = [[4, 0], [3, 1], [5, 1], [4, 1]]
+            self.minx, self.miny, self.maxx, self.maxy = 3, 0, 5, 1
+        for i in self.figpos:
+            if self.pole[i[1]][i[0]] == 'X':
+                print('lose')
+                self.timer.stop()
 
-            i, okBtnPressed = QInputDialog.getText(self, 'Game over', "Введите имя")
-            if okBtnPressed:
-                print(1)
-                self.save_results(i, self.score)
-        else:
-            if self.curfig == 'o':
-                self.figpos = [[4, 0], [5, 0], [4, 1], [5, 1]]
-                self.minx, self.miny, self.maxx, self.maxy = 4, 0, 5, 1
-            elif self.curfig == 'i':
-                self.figpos = [[4, 0], [4, 1], [4, 2], [4, 3]]
-                self.minx, self.miny, self.maxx, self.maxy = 4, 0, 4, 3
-            elif self.curfig == 's':
-                self.figpos = [[4, 0], [3, 0], [3, 1], [2, 1]]
-                self.minx, self.miny, self.maxx, self.maxy = 2, 0, 4, 1
-            elif self.curfig == 'z':
-                self.figpos = [[4, 0], [5, 0], [5, 1], [6, 1]]
-                self.minx, self.miny, self.maxx, self.maxy = 4, 0, 6, 1
-            elif self.curfig == 'l':
-                self.figpos = [[4, 0], [4, 1], [3, 1], [2, 1]]
-                self.minx, self.miny, self.maxx, self.maxy = 2, 0, 4, 1
-            elif self.curfig == 'j':
-                self.figpos = [[4, 0], [4, 1], [5, 1], [6, 1]]
-                self.minx, self.miny, self.maxx, self.maxy = 4, 0, 6, 1
-            elif self.curfig == 't':
-                self.figpos = [[4, 0], [3, 1], [5, 1], [4, 1]]
-                self.minx, self.miny, self.maxx, self.maxy = 3, 0, 5, 1
-            for i in self.figpos:
+                i, okBtnPressed = QInputDialog.getText(self, 'Game over', "Введите имя")
+                if okBtnPressed:
+                    print(i)
+                    self.save_results(i)
+            else:
                 self.pole[i[1]][i[0]] = 'X'
 
     def repaiting(self):
@@ -158,7 +191,8 @@ class game(QMainWindow):
                 if self.pole[i][j] == 'O':
                     exec(f'self.btn{str(j) + str(0) + str(i)}.setStyleSheet("background-color: #FFFFFF")')
                 elif self.pole[i][j] == 'X':
-                    exec(f'self.btn{str(j) + str(0) + str(i)}.setStyleSheet("background-color: {self.buttoncolours[self.deletedlines // 3 % 10]}")')
+                    exec(f'self.btn{str(j) + str(0) + str(i)}.setStyleSheet("background-color:'
+                         f' {self.buttoncolours[self.deletedlines // 3 % 7]}")')
 
     def ischecked(self, minx, miny, maxx, maxy, coords):
         q, q1 = 0, 0
@@ -500,12 +534,22 @@ class game(QMainWindow):
             elif dv == '/':
                 self.perevorot()
 
+    def nextfigbuild(self):
+        for i in range(5):
+            for j in range(4):
+                exec(f'self.btn{str(i) + str(111) + str(j)}.setStyleSheet("background-color: #FFFFFF")')
+        for i in self.figures[self.fig.index(self.nextfig)]:
+            exec(f'self.btn{str(i[0] - 2) + str(111) + str(i[1])}.setStyleSheet("background-color: #000000")')
+
     def turn(self):
         if self.figpos == []:
             self.perevorotfig = 0
             self.curfig = self.nextfig
             self.nextfig = random.choice(self.fig)
-            self.createfigure()
+            while self.nextfig == self.curfig:
+                self.nextfig = random.choice(self.fig)
+            self.createfigure(self.curfig)
+            self.nextfigbuild()
             self.repaiting()
         else:
             self.dash('v')
