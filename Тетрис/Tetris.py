@@ -31,23 +31,45 @@ class game(QMainWindow):
         self.nextfig = random.choice(self.fig)
         self.buttoncolours = ['#FF00FF', '#800080', '#FF0000', '#800000',
                               '#008000', '#808000', '#0000FF']
-        self.startigra = False
         self.pausegame = False
+        self.board = []
 
+        con = sqlite3.connect('Tetris.db')
+        cur = con.cursor()
+        result1 = cur.execute("""SELECT score, name FROM Tetris""").fetchall()
+        for elem in result1:
+            self.board.append(elem)
+        self.board = list(reversed(sorted(self.board)))
+        for i in range(len(self.board)):
+            self.scoreboard.setItem(i, 0, QTableWidgetItem(str(self.board[i][1])))
+            self.scoreboard.setItem(i, 1, QTableWidgetItem(str(self.board[i][0])))
+        con.commit()
+        con.close()
 
     def initUI(self):
         self.setGeometry(900, 100, 800, 600)
         self.setWindowTitle('GAME')
 
-        self.start = QPushButton(f'Начать игру', self)
-        self.start.resize(100, 40)
+        self.start = QPushButton(f'Начать новую игру', self)
+        self.start.resize(120, 40)
         self.start.move(50, 10)
         self.start.clicked.connect(self.startgame)
 
-        self.start = QPushButton(f'Пауза', self)
-        self.start.resize(100, 40)
-        self.start.move(50, 90)
-        self.start.clicked.connect(self.pause)
+        self.pausa = QPushButton(f'Пауза', self)
+        self.pausa.resize(120, 40)
+        self.pausa.move(50, 90)
+        self.pausa.clicked.connect(self.pause)
+        self.pausa.setEnabled(False)
+
+        self.save = QPushButton(f'Сохранить игру', self)
+        self.save.resize(120, 40)
+        self.save.move(520, 10)
+        self.save.clicked.connect(self.savegame)
+
+        self.load = QPushButton(f'Загрузить игру', self)
+        self.load.resize(120, 40)
+        self.load.move(660, 10)
+        self.load.clicked.connect(self.loadgame)
 
 
         self.rules = QLabel(self)
@@ -89,20 +111,99 @@ class game(QMainWindow):
         self.scoreboard.resize(224, 327)
         self.scoreboard.setRowCount(10)
         self.scoreboard.setColumnCount(2)
+        self.scoreboard.setEnabled(False)
 
     def save_results(self, name):
         con = sqlite3.connect('Tetris.db')
         cur = con.cursor()
-        result = cur.execute(f"""insert into Tetris(name, score) values({name}, {self.score})""")
+        result = cur.execute(f'insert into Tetris(name, score) values("{name}", {self.score})')
+        self.board.append((self.score, name))
+        self.board = list(reversed(sorted(self.board)))
+        for i in range(len(self.board)):
+            self.scoreboard.setItem(i, 0, QTableWidgetItem(str(self.board[i][1])))
+            self.scoreboard.setItem(i, 1, QTableWidgetItem(str(self.board[i][0])))
         con.commit()
         con.close()
 
+    def savegame(self):
+        q = []
+        q.append(self.speed)
+        q.append(self.pole)
+        q.append(self.pole1)
+        q.append(self.curfig)
+        q.append(self.figpos)
+        q.append([self.minx, self.miny, self.maxx, self.maxy])
+        q.append(self.perevorotfig)
+        q.append(self.deletedlines)
+        q.append(self.score)
+        q.append(self.nextfig)
+        q.append(self.pausegame)
+        q.append(self.board)
+        q = str(q)
+        con = sqlite3.connect('Tetris.db')
+        cur = con.cursor()
+        result = cur.execute(f'insert into safeload(lastgame) values("{q}")')
+        con.commit()
+        con.close()
+
+    def loadgame(self):
+        q = 0
+        con = sqlite3.connect('Tetris.db')
+        cur = con.cursor()
+        q = cur.execute("""SELECT lastgame FROM safeload""").fetchall()
+        con.commit()
+        con.close()
+        q = eval(q[-1][0])
+        self.speed = q[0]
+        self.pole = q[1]
+        self.pole1 = q[2]
+        self.curfig = q[3]
+        self.figpos = q[4]
+        self.minx, self.miny, self.maxx, self.maxy = q[5][0], q[5][1], q[5][2], q[5][3]
+        self.perevorotfig = q[6]
+        self.deletedlines = q[7]
+        self.score = q[8]
+        self.nextfig = q[9]
+        self.pausegame = q[10]
+        self.board = q[11]
+        self.level()
+        self.nextfigbuild()
+
     def startgame(self):
-        self.createpole()
+        self.start.setEnabled(False)
+        self.pausa.setEnabled(True)
+        self.reloadgame()
         self.startigra = True
         self.timer = QTimer()
         self.timer.timeout.connect(self.turn)
+        self.speed = 600
+        self.deletedlines = 0
+        self.score = 0
+        self.nextfig = random.choice(self.fig)
         self.timer.start(self.speed)
+        self.curfig = ''
+        self.figpos = []
+        self.pausegame = False
+
+    def reloadgame(self):
+        self.pole.clear()
+        self.pole1.clear()
+        for i in range(10):
+            for j in range(20):
+                exec(f'self.btn{str(i) + str(0) + str(j)}.setStyleSheet("background-color: #FFFFFF")')
+        for i in range(5):
+            for j in range(4):
+                exec(f'self.btn{str(i) + str(111) + str(j)}.setStyleSheet("background-color: #FFFFFF")')
+        for i in range(20):
+            pole1 = []
+            for j in range(10):
+                pole1.append('O')
+            self.pole.append(pole1)
+        for i in range(3):
+            pole1 = []
+            for i in range(4):
+                pole1.append('O')
+            self.pole1.append(pole1)
 
     def pause(self):
         if not self.pausegame:
@@ -141,7 +242,7 @@ class game(QMainWindow):
             self.pole1.append(pole1)
 
     def keyPressEvent(self, event):
-        if self.startigra:
+        if not self.pausegame:
             if event.key() == Qt.Key_D:
                 self.dash('>')
             elif event.key() == Qt.Key_A:
@@ -175,13 +276,13 @@ class game(QMainWindow):
             self.minx, self.miny, self.maxx, self.maxy = 3, 0, 5, 1
         for i in self.figpos:
             if self.pole[i[1]][i[0]] == 'X':
-                print('lose')
                 self.timer.stop()
-
                 i, okBtnPressed = QInputDialog.getText(self, 'Game over', "Введите имя")
                 if okBtnPressed:
-                    print(i)
                     self.save_results(i)
+                    self.start.setEnabled(True)
+                    self.pausa.setEnabled(False)
+                    break
             else:
                 self.pole[i[1]][i[0]] = 'X'
 
